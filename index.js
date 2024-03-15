@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { requireNativeComponent, NativeModules, Platform, Image, View, Dimensions } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { requireNativeComponent, NativeModules, Platform, Image, View } from 'react-native';
 
 const LINKING_ERROR =
   `The package 'react-native-blasted-image' doesn't seem to be linked. Make sure: \n\n` +
@@ -83,17 +83,22 @@ const BlastedImage = ({ source, width, onLoad, onError, fallbackSource, height, 
     borderRightWidth = borderWidth,
   } = remainingStyle;
 
-  // Get screen dimensions
-  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+  const [parentDimensions, setParentDimensions] = useState({ width: 0, height: 0 });
+  const parentViewRef = useRef();
 
-  // Convert percentage widths and heights to pixels if needed
-  const resolveDimension = (dimension, screenSize) => {
+  // Handler for layout changes
+  const onLayout = (event) => {
+    const { width, height } = event.nativeEvent.layout;
+    setParentDimensions({ width, height });
+  };
+
+  // Convert percentage dimensions to pixels based on parent dimensions
+  const resolveDimension = (dimension, baseSize) => {
     if (typeof dimension === 'string' && dimension.includes('%')) {
-      // Parse the percentage value and calculate dimension based on screen size
       const percentValue = parseFloat(dimension) / 100;
-      return screenSize * percentValue;
+      return baseSize * percentValue;
     }
-    return dimension; // Return original dimension if not a percentage
+    return parseFloat(dimension); // Ensure numerical value is returned
   };
 
   const resolvedWidth = resolveDimension(width, screenWidth);
@@ -121,7 +126,7 @@ const BlastedImage = ({ source, width, onLoad, onError, fallbackSource, height, 
   };
 
   return (
-    <View style={!isBackground ? viewStyle : null}>
+    <View ref={parentViewRef} onLayout={onLayout} style={!isBackground ? viewStyle : null}>
       {isBackground ? (
         <View style={viewStyle}>
           {renderImageContent(error, source, fallbackSource, adjustedHeight, adjustedWidth, resizeMode)}
