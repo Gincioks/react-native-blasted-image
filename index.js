@@ -101,8 +101,8 @@ const BlastedImage = ({ source, width, onLoad, onError, fallbackSource, height, 
     return parseFloat(dimension); // Ensure numerical value is returned
   };
 
-  const resolvedWidth = resolveDimension(width, screenWidth);
-  const resolvedHeight = resolveDimension(height, screenHeight);
+  const resolvedWidth = resolveDimension(width, parentDimensions.width);
+  const resolvedHeight = resolveDimension(height, parentDimensions.height);
 
   // Calculate the adjusted width and height
   const adjustedWidth = resolvedWidth - (borderLeftWidth + borderRightWidth);
