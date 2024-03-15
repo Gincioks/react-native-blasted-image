@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { requireNativeComponent, NativeModules, Platform, Image, View } from 'react-native';
+import { requireNativeComponent, NativeModules, Platform, Image, View, Dimensions } from 'react-native';
 
 const LINKING_ERROR =
   `The package 'react-native-blasted-image' doesn't seem to be linked. Make sure: \n\n` +
@@ -10,16 +10,16 @@ const LINKING_ERROR =
 const NativeBlastedImage = NativeModules.BlastedImage
   ? NativeModules.BlastedImage
   : new Proxy(
-      {},
-      {
-        get() {
-          throw new Error(LINKING_ERROR);
-        },
-      }
+    {},
+    {
+      get() {
+        throw new Error(LINKING_ERROR);
+      },
+    }
   );
 
-  export const loadImage = (imageUrl, headers = {}, skipMemoryCache = false) => {
-    return NativeBlastedImage.loadImage(imageUrl, headers, skipMemoryCache)
+export const loadImage = (imageUrl, headers = {}, skipMemoryCache = false) => {
+  return NativeBlastedImage.loadImage(imageUrl, headers, skipMemoryCache)
     .catch((error) => {
       console.error("Error loading image:", error);
       throw error;
@@ -33,9 +33,9 @@ const BlastedImage = ({ source, width, onLoad, onError, fallbackSource, height, 
 
   if (!source || (!source.uri && typeof source !== 'number')) {
     if (!source) {
-        console.error("Source not specified for BlastedImage.");
+      console.error("Source not specified for BlastedImage.");
     } else {
-        console.error("Source should be either a URI <BlastedImage source={{ uri: 'https://example.com/image.jpg' }} /> or a local image using <BlastedImage source={ require('https://example.com/image.jpg') } />");
+      console.error("Source should be either a URI <BlastedImage source={{ uri: 'https://example.com/image.jpg' }} /> or a local image using <BlastedImage source={ require('https://example.com/image.jpg') } />");
     }
     return null;
   }
@@ -76,26 +76,32 @@ const BlastedImage = ({ source, width, onLoad, onError, fallbackSource, height, 
   height = height || styleHeight || 100; // First check the direct prop, then style, then default to 100
 
   const {
-      borderWidth = 0,
-      borderTopWidth = borderWidth,
-      borderBottomWidth = borderWidth,
-      borderLeftWidth = borderWidth,
-      borderRightWidth = borderWidth,
+    borderWidth = 0,
+    borderTopWidth = borderWidth,
+    borderBottomWidth = borderWidth,
+    borderLeftWidth = borderWidth,
+    borderRightWidth = borderWidth,
   } = remainingStyle;
 
-  if (typeof width === 'string' && width.includes('%')) {
-    console.log("For maximum performance, BlastedImage does not support width defined as a percentage");
-    return;
-  }
+  // Get screen dimensions
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-  if (typeof height === 'string' && height.includes('%')) {
-    console.log("For maximum performance, BlastedImage does not support height defined as a percentage");
-    return;
-  }
+  // Convert percentage widths and heights to pixels if needed
+  const resolveDimension = (dimension, screenSize) => {
+    if (typeof dimension === 'string' && dimension.includes('%')) {
+      // Parse the percentage value and calculate dimension based on screen size
+      const percentValue = parseFloat(dimension) / 100;
+      return screenSize * percentValue;
+    }
+    return dimension; // Return original dimension if not a percentage
+  };
+
+  const resolvedWidth = resolveDimension(width, screenWidth);
+  const resolvedHeight = resolveDimension(height, screenHeight);
 
   // Calculate the adjusted width and height
-  const adjustedWidth = width - (borderLeftWidth + borderRightWidth);
-  const adjustedHeight = height - (borderTopWidth + borderBottomWidth);
+  const adjustedWidth = resolvedWidth - (borderLeftWidth + borderRightWidth);
+  const adjustedHeight = resolvedHeight - (borderTopWidth + borderBottomWidth);
 
   const viewStyle = {
     ...defaultStyle,
@@ -108,8 +114,8 @@ const BlastedImage = ({ source, width, onLoad, onError, fallbackSource, height, 
     position: 'absolute',
     top: 0,
     left: 0,
-    justifyContent:'center',
-    alignItems:'center',
+    justifyContent: 'center',
+    alignItems: 'center',
     width: adjustedWidth,
     height: adjustedHeight,
   };
@@ -190,37 +196,37 @@ BlastedImage.clearAllCaches = () => {
 
 BlastedImage.preload = (input) => {
   return new Promise((resolve) => {
-      // single object
-      if (typeof input === 'object' && input !== null && !Array.isArray(input)) {
-          loadImage(input.uri, input.headers, input.skipMemoryCache)
-              .then(() => {
-                  resolve();
-              })
-              .catch((err) => {
-                  console.error("Error preloading single image:", err);
-                  resolve(); // Count as handled even if failed to continue processing
-              });
-      }
-      // array
-      else if (Array.isArray(input)) {
-          let loadedCount = 0;
-          input.forEach(image => {
-              loadImage(image.uri, image.headers, image.skipMemoryCache)
-                  .then(() => {
-                      loadedCount++;
-                      if (loadedCount === input.length) {
-                          resolve();
-                      }
-                  })
-                  .catch((err) => {
-                      console.error("Error preloading one of the array images:", err);
-                      loadedCount++; // Count as handled even if failed to continue processing
-                      if (loadedCount === input.length) {
-                          resolve();
-                      }
-                  });
+    // single object
+    if (typeof input === 'object' && input !== null && !Array.isArray(input)) {
+      loadImage(input.uri, input.headers, input.skipMemoryCache)
+        .then(() => {
+          resolve();
+        })
+        .catch((err) => {
+          console.error("Error preloading single image:", err);
+          resolve(); // Count as handled even if failed to continue processing
+        });
+    }
+    // array
+    else if (Array.isArray(input)) {
+      let loadedCount = 0;
+      input.forEach(image => {
+        loadImage(image.uri, image.headers, image.skipMemoryCache)
+          .then(() => {
+            loadedCount++;
+            if (loadedCount === input.length) {
+              resolve();
+            }
+          })
+          .catch((err) => {
+            console.error("Error preloading one of the array images:", err);
+            loadedCount++; // Count as handled even if failed to continue processing
+            if (loadedCount === input.length) {
+              resolve();
+            }
           });
-      }
+      });
+    }
   });
 };
 
