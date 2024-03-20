@@ -21,7 +21,7 @@ const NativeBlastedImage = NativeModules.BlastedImage
 export const loadImage = (imageUrl, headers = {}, skipMemoryCache = false) => {
   return NativeBlastedImage.loadImage(imageUrl, headers, skipMemoryCache)
     .catch((error) => {
-      console.error("Error loading image:", error);
+      console.error("Error loading image:", error, + " " + imageUrl);
       throw error;
     });
 };
@@ -208,7 +208,7 @@ BlastedImage.preload = (input) => {
           resolve();
         })
         .catch((err) => {
-          console.error("Error preloading single image:", err);
+          console.error("Error preloading single image:", err, + " " + input.uri);
           resolve(); // Count as handled even if failed to continue processing
         });
     }
@@ -224,7 +224,7 @@ BlastedImage.preload = (input) => {
             }
           })
           .catch((err) => {
-            console.error("Error preloading one of the array images:", err);
+            console.error("Error preloading one of the array images:", err, + " " + image.uri);
             loadedCount++; // Count as handled even if failed to continue processing
             if (loadedCount === input.length) {
               resolve();
